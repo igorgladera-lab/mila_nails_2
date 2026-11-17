@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Mila Nails</title>
+
+<script>
+  (function(){
+    try{
+      var salvo = localStorage.getItem("mila_nails_tema");
+      var tema;
+      if(salvo === "dark" || salvo === "light"){
+        tema = salvo;
+      } else {
+        tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", tema);
+    }catch(e){}
+  })();
+</script>
+
+<meta name="theme-color" content="#7b1e3a">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="manifest" href="manifest.json">
+
+<link rel="icon" type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%237b1e3a'/%3E%3Ctext x='16' y='23' font-size='16' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-weight='bold'%3EMN%3C/text%3E%3C/svg%3E">
+
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Mila Nails">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="app-header">MILA NAILS</header>
+
+<div class="controls">
+  <button class="nav-btn" id="btnPrev" aria-label="Mês anterior">◀</button>
+  <button class="nav-btn" id="btnMonthPicker" aria-label="Selecionar mês">📅</button>
+  <div class="month-label" id="monthLabel">—</div>
+  <button class="cfg-btn" id="btnConfig" aria-label="Configurações" title="Configurações">⚙️</button>
+  <button class="nav-btn" id="btnNext" aria-label="Próximo mês">▶</button>
+</div>
+
+<div class="filtro-banner" id="filtroBanner">
+  <span class="fb-texto" id="filtroTexto">—</span>
+  <button class="fb-limpar" id="btnLimparFiltro" type="button">✕ Limpar</button>
+</div>
+
+<div class="calendar-wrap" id="calendarWrap">
+  <div id="bannerWrap"></div>
+
+  <div class="weekdays">
+    <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="float-stack">
+  <button class="btn-float wa" id="btnWhatsappFloat" aria-label="Lembretes WhatsApp" title="Lembretes WhatsApp" style="display:none;">📲</button>
+  <button class="btn-float" id="btnBuscaFloat" aria-label="Buscar cliente" title="Buscar cliente">🔍</button>
+  <button class="btn-float" id="btnBackupFloat" aria-label="Backup" title="Backup">💾</button>
+</div>
+
+<!-- OVERLAY: MODAL DE BUSCA -->
+<div class="overlay top" id="overlayBusca">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Buscar cliente</div>
+      <button class="sheet-close" data-close="overlayBusca">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="busca-input-wrap">
+        <span class="busca-icon">🔍</span>
+        <input type="search" id="buscaCliente" placeholder="Digite o nome do cliente..." autocomplete="off">
+        <button class="btn-clear" id="btnLimparBusca" type="button" aria-label="Limpar">✕</button>
+      </div>
+      <div class="busca-resultado" id="buscaResultado">
+        Digite para filtrar
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-primary" id="btnOkBusca">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: MODAL DO DIA -->
+<div class="overlay" id="overlayDay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="dayTitle">—</div>
+      <button class="sheet-close" data-close="overlayDay">✕</button>
+    </div>
+    <div class="sheet-body" id="dayBody"></div>
+    <div class="sheet-footer multi">
+      <div class="chip-rodape" id="chipFolga" role="button" tabindex="0" title="Marcar folga">
+        <span class="chip-icon">🛌</span>
+        <span>Folga</span>
+        <span class="chip-check">✓</span>
+      </div>
+      <button class="btn btn-vacation" id="btnVacation" title="Marcar férias">🏖️ Férias</button>
+      <button class="btn btn-primary" id="btnAddAg">+ Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: ESCOLHA DE FOLGA -->
+<div class="overlay" id="overlayFolga">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Folga 🛌</div>
+      <button class="sheet-close" data-close="overlayFolga">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="folga-opcao" id="folgaOpDiaTodo" role="button" tabindex="0">
+        <span class="folga-icon">🛌</span>
+        <span class="folga-txt">
+          <span class="folga-titulo">Dia todo</span>
+          <span class="folga-sub">Marca manhã e tarde de uma vez</span>
+        </span>
+        <span class="folga-check">✓</span>
+      </div>
+      <div class="folga-opcao" id="folgaOpPeriodo" role="button" tabindex="0">
+        <span class="folga-icon">📅</span>
+        <span class="folga-txt">
+          <span class="folga-titulo">Período...</span>
+          <span class="folga-sub">Escolher manhã ou tarde separadamente</span>
+        </span>
+        <span class="folga-seta">▶</span>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" data-close="overlayFolga">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: ESCOLHA DE PERÍODO -->
+<div class="overlay" id="overlayFolgaPeriodo">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Folga · Período</div>
+      <button class="sheet-close" data-close="overlayFolgaPeriodo">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="folga-opcao" id="folgaOpManha" role="button" tabindex="0">
+        <span class="folga-icon">☀️</span>
+        <span class="folga-txt">
+          <span class="folga-titulo">Manhã</span>
+          <span class="folga-sub">Folga no período da manhã</span>
+        </span>
+        <span class="folga-check">✓</span>
+      </div>
+      <div class="folga-opcao" id="folgaOpTarde" role="button" tabindex="0">
+        <span class="folga-icon">🌙</span>
+        <span class="folga-txt">
+          <span class="folga-titulo">Tarde</span>
+          <span class="folga-sub">Folga no período da tarde</span>
+        </span>
+        <span class="folga-check">✓</span>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" id="btnVoltarFolga">Voltar</button>
+      <button class="btn btn-danger" id="btnLimparFolga">Limpar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: FORM AGENDAMENTO -->
+<div class="overlay" id="overlayAg">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="agTitle">Novo agendamento</div>
+      <button class="sheet-close" data-close="overlayAg">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-group">
+        <label for="agHora">Horário</label>
+        <select id="agHora">
+          <option value="">— Sem horário —</option>
+        </select>
+      </div>
+
+      <label class="check-group" id="checkDuploWrap" for="agDuplo">
+        <input type="checkbox" id="agDuplo">
+        <span class="check-label">
+          👥 Duas clientes juntas
+          <span class="check-sub">O segundo procedimento começa quando o primeiro termina</span>
+        </span>
+      </label>
+
+      <div class="form-group">
+        <label for="agCliente">Cliente</label>
+        <input type="text" id="agCliente" placeholder="Nome da cliente" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="agTelefone">Telefone</label>
+        <input type="tel" id="agTelefone" placeholder="(00) 00000-0000" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="agTipo">Tipo de serviço</label>
+        <select id="agTipo"></select>
+      </div>
+      <div class="form-group">
+        <label for="agDuracao">Duração (min)</label>
+        <input type="number" id="agDuracao" placeholder="60" min="0" step="5">
+      </div>
+
+      <div class="chip-domicilio" id="chipDomicilio" role="button" tabindex="0">
+        <span class="chip-icon">🏠</span>
+        <span class="chip-texto">
+          Atendimento a domicílio
+          <span class="chip-info" id="chipDomicilioInfo"></span>
+        </span>
+        <span class="chip-check">✓</span>
+      </div>
+
+      <div id="agEnderecoWrap" class="campo-endereco">
+        <label for="agEndereco">Endereço</label>
+        <div class="endereco-linha">
+          <input type="text" id="agEndereco" placeholder="Rua, número, bairro, cidade" autocomplete="off">
+          <button type="button" id="btnAbrirMaps" class="btn-maps" title="Abrir no Google Maps" disabled>📍</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="agObs">Observação</label>
+        <textarea id="agObs" placeholder="Observações..."></textarea>
+      </div>
+
+      <div class="cliente2-bloco" id="cliente2Bloco">
+        <div class="cliente2-titulo">
+          👥 Segunda cliente
+          <span class="cliente2-horario" id="cliente2Horario">—</span>
+        </div>
+
+        <div class="form-group">
+          <label for="agCliente2">Nome da cliente 2</label>
+          <input type="text" id="agCliente2" placeholder="Nome da segunda cliente" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="agTelefone2">Telefone 2</label>
+          <input type="tel" id="agTelefone2" placeholder="(00) 00000-0000" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="agTipo2">Tipo de serviço</label>
+          <select id="agTipo2"></select>
+        </div>
+        <div class="form-group">
+          <label for="agDuracao2">Duração (min)</label>
+          <input type="number" id="agDuracao2" placeholder="60" min="0" step="5">
+        </div>
+      </div>
+
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-danger" id="btnDeleteAg" style="display:none;">Excluir</button>
+      <button class="btn btn-secondary" data-close="overlayAg">Cancelar</button>
+      <button class="btn btn-primary" id="btnSaveAg">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: CONFIGURAÇÕES -->
+<div class="overlay" id="overlayConfig">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Configurações</div>
+      <button class="sheet-close" data-close="overlayConfig">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="cfg-list">
+        <button class="cfg-item" id="cfgBtnClientes">
+          <span class="cfg-icon">👥</span>
+          <span class="cfg-txt">
+            <span class="cfg-titulo">Clientes</span>
+            <span class="cfg-sub">Cadastrar clientes com nome, telefone e endereço</span>
+          </span>
+          <span class="cfg-seta">▶</span>
+        </button>
+
+        <button class="cfg-item" id="cfgBtnTipos">
+          <span class="cfg-icon">🎨</span>
+          <span class="cfg-txt">
+            <span class="cfg-titulo">Tipos de serviço</span>
+            <span class="cfg-sub">Cadastrar tipos, cores, preços e durações</span>
+          </span>
+          <span class="cfg-seta">▶</span>
+        </button>
+
+        <button class="cfg-item" id="cfgBtnFeriados">
+          <span class="cfg-icon">🎉</span>
+          <span class="cfg-txt">
+            <span class="cfg-titulo">Feriados</span>
+            <span class="cfg-sub">Cadastrar feriados municipal e estadual</span>
+          </span>
+          <span class="cfg-seta">▶</span>
+        </button>
+
+        <button class="cfg-item" id="cfgBtnDomicilio">
+          <span class="cfg-icon">🏠</span>
+          <span class="cfg-txt">
+            <span class="cfg-titulo">Domicílio</span>
+            <span class="cfg-sub">Taxa e duração do atendimento a domicílio</span>
+          </span>
+          <span class="cfg-seta">▶</span>
+        </button>
+
+        <button class="cfg-item" id="cfgBtnWhatsapp">
+          <span class="cfg-icon">📲</span>
+          <span class="cfg-txt">
+            <span class="cfg-titulo">WhatsApp</span>
+            <span class="cfg-sub">Enviar lembretes de agendamento</span>
+          </span>
+          <span class="cfg-seta">▶</span>
+        </button>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" data-close="overlayConfig">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: CLIENTES -->
+<div class="overlay" id="overlayClientes">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Clientes</div>
+      <button class="sheet-close" data-close="overlayClientes">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="busca-input-wrap">
+        <span class="busca-icon">🔍</span>
+        <input type="search" id="buscaListaClientes" placeholder="Buscar cliente..." autocomplete="off">
+        <button class="btn-clear" id="btnLimparBuscaClientes" type="button" aria-label="Limpar">✕</button>
+      </div>
+      <div id="clientesBody"></div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-primary" id="btnAddCliente">+ Nova cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: FORM CLIENTE -->
+<div class="overlay" id="overlayCliente">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="clienteTitle">Nova cliente</div>
+      <button class="sheet-close" data-close="overlayCliente">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-group">
+        <label for="clienteNome">Nome <span class="label-hint">(obrigatório)</span></label>
+        <input type="text" id="clienteNome" placeholder="Ex: Maria Silva" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="clienteTelefone">Telefone <span class="label-hint">(opcional)</span></label>
+        <input type="tel" id="clienteTelefone" placeholder="(00) 00000-0000" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="clienteEndereco">Endereço <span class="label-hint">(opcional)</span></label>
+        <input type="text" id="clienteEndereco" placeholder="Rua, número, bairro, cidade" autocomplete="off">
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-danger" id="btnDeleteCliente" style="display:none;">Excluir</button>
+      <button class="btn btn-secondary" data-close="overlayCliente">Cancelar</button>
+      <button class="btn btn-primary" id="btnSaveCliente">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: TIPOS -->
+<div class="overlay" id="overlayTipos">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Tipos de serviço</div>
+      <button class="sheet-close" data-close="overlayTipos">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div id="tiposBody"></div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-primary" id="btnAddTipo">+ Novo tipo</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: FORM TIPO -->
+<div class="overlay" id="overlayTipo">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="tipoTitle">Novo tipo</div>
+      <button class="sheet-close" data-close="overlayTipo">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-group">
+        <label for="tipoNome">Nome</label>
+        <input type="text" id="tipoNome" placeholder="Ex: Mão simples">
+      </div>
+      <div class="form-group">
+        <label for="tipoPreco">Preço (R$)</label>
+        <input type="number" id="tipoPreco" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label for="tipoDuracao">Duração (min)</label>
+        <input type="number" id="tipoDuracao" placeholder="60" min="0" step="5">
+      </div>
+      <div class="form-group">
+        <label>Cor</label>
+        <div class="color-grid" id="colorGrid"></div>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-danger" id="btnDeleteTipo" style="display:none;">Excluir</button>
+      <button class="btn btn-secondary" data-close="overlayTipo">Cancelar</button>
+      <button class="btn btn-primary" id="btnSaveTipo">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: CONFIG DOMICÍLIO -->
+<div class="overlay" id="overlayDomicilio">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Configuração de domicílio</div>
+      <button class="sheet-close" data-close="overlayDomicilio">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="config-secao">
+        <div class="config-titulo">⚙️ Parâmetros</div>
+        <div class="config-linha">
+          <label for="cfgTaxaDomicilio">Taxa de domicílio</label>
+          <div class="config-input-wrap">
+            <span class="config-sufixo">R$</span>
+            <input type="number" id="cfgTaxaDomicilio" min="0" step="0.01" placeholder="20,00">
+          </div>
+        </div>
+        <div class="config-linha">
+          <label for="cfgDuracaoDomicilio">Duração</label>
+          <div class="config-input-wrap">
+            <input type="number" id="cfgDuracaoDomicilio" min="0" step="15" placeholder="150">
+            <span class="config-sufixo">min</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" data-close="overlayDomicilio">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: CONFIG WHATSAPP (com bloco de lembretes v1.16) -->
+<div class="overlay" id="overlayWhatsapp">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">WhatsApp</div>
+      <button class="sheet-close" data-close="overlayWhatsapp">✕</button>
+    </div>
+    <div class="sheet-body">
+
+      <div class="config-secao">
+        <div class="config-titulo">⚙️ Conexão</div>
+
+        <div class="form-group">
+          <label for="waBackendUrl">URL do backend</label>
+          <input type="url" id="waBackendUrl" placeholder="https://mila-nails-backend.onrender.com" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="waApiKey">API Key</label>
+          <input type="password" id="waApiKey" placeholder="mila_nails_sk_..." autocomplete="off">
+        </div>
+
+        <label class="check-group" for="waAtivo" id="waAtivoWrap">
+          <input type="checkbox" id="waAtivo">
+          <span class="check-label">
+            ✅ Ativar lembretes
+            <span class="check-sub">Mostra o botão 📲 na tela principal</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="config-secao">
+        <div class="config-titulo">📝 Template</div>
+        <div class="config-linha">
+          <label for="waTemplateName">Nome do template</label>
+          <div class="config-input-wrap">
+            <input type="text" id="waTemplateName" placeholder="confirmacao_agendamento" style="width:220px;">
+          </div>
+        </div>
+        <div class="config-linha">
+          <label for="waLanguageCode">Idioma</label>
+          <div class="config-input-wrap">
+            <input type="text" id="waLanguageCode" placeholder="pt_BR" style="width:90px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ v1.16: NOVA SEÇÃO REGRAS DE ENVIO ═══ -->
+      <div class="config-secao">
+        <div class="config-titulo">📲 Regras de envio</div>
+
+        <div class="config-linha">
+          <label for="waModo">Modo de envio</label>
+          <div class="config-input-wrap">
+            <select id="waModo" style="width:130px;">
+              <option value="manual">Manual</option>
+              <option value="auto">Automático</option>
+              <option value="ambos">Ambos</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="config-linha">
+          <label>⏰ Envio automático</label>
+          <div class="config-input-wrap" style="font-size:12px;color:var(--muted);text-align:right;max-width:180px;">
+            17:00 (horário de Brasília)
+          </div>
+        </div>
+
+        <div class="config-linha">
+          <label for="waMaxReenvios">Máximo de reenvios</label>
+          <div class="config-input-wrap">
+            <select id="waMaxReenvios" style="width:110px;">
+              <option value="0">Desligado</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="config-linha">
+          <label for="waIntervaloReenvio">Intervalo mínimo</label>
+          <div class="config-input-wrap">
+            <select id="waIntervaloReenvio" style="width:110px;">
+              <option value="1">1h</option>
+              <option value="2">2h</option>
+              <option value="4">4h</option>
+              <option value="12">12h</option>
+              <option value="24">24h</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4;">
+          ⚠️ Cada envio (original ou reenvio) é uma mensagem de template
+          cobrada pela Meta (~R$ 0,04). Use com moderação.
+        </div>
+      </div>
+      <!-- ═══ FIM NOVO (v1.16) ═══ -->
+
+      <div id="waStatus" class="busca-resultado" style="padding:8px;"></div>
+
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" data-close="overlayWhatsapp">Fechar</button>
+      <button class="btn btn-primary" id="btnWaSalvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: LEMBRETES WHATSAPP (enriquecido v1.16) -->
+<div class="overlay" id="overlayLembretes">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="lembretesTitle">Lembretes de amanhã</div>
+      <button class="sheet-close" data-close="overlayLembretes">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div id="lembretesBody"></div>
+      <div id="lembretesResultado"></div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" data-close="overlayLembretes">Fechar</button>
+      <button class="btn btn-primary" id="btnEnviarLembretes">📲 Enviar lembretes</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: FERIADOS -->
+<div class="overlay" id="overlayFeriados">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Feriados</div>
+      <button class="sheet-close" data-close="overlayFeriados">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="config-secao" style="margin-bottom:12px;">
+        <div class="config-titulo">🇧🇷 Feriados nacionais</div>
+        <div id="feriadosNacionaisBody" style="font-size:12px;color:var(--muted);"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px;">🎉 Municipal / Estadual</div>
+      <div id="feriadosBody"></div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-primary" id="btnAddFeriado">+ Novo feriado</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: FORM FERIADO -->
+<div class="overlay" id="overlayFeriado">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="feriadoTitle">Novo feriado</div>
+      <button class="sheet-close" data-close="overlayFeriado">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-group">
+        <label for="feriadoNome">Nome do feriado</label>
+        <input type="text" id="feriadoNome" placeholder="Ex: Aniversário da cidade">
+      </div>
+      <div class="form-group">
+        <label for="feriadoDia">Dia</label>
+        <input type="number" id="feriadoDia" placeholder="15" min="1" max="31">
+      </div>
+      <div class="form-group">
+        <label for="feriadoMes">Mês</label>
+        <select id="feriadoMes">
+          <option value="1">Janeiro</option>
+          <option value="2">Fevereiro</option>
+          <option value="3">Março</option>
+          <option value="4">Abril</option>
+          <option value="5">Maio</option>
+          <option value="6">Junho</option>
+          <option value="7">Julho</option>
+          <option value="8">Agosto</option>
+          <option value="9">Setembro</option>
+          <option value="10">Outubro</option>
+          <option value="11">Novembro</option>
+          <option value="12">Dezembro</option>
+        </select>
+      </div>
+      <label class="check-group" for="feriadoAnual">
+        <input type="checkbox" id="feriadoAnual">
+        <span class="check-label">
+          🗓️ Feriado anual (repete todo ano)
+          <span class="check-sub">Se desmarcado, vale apenas para o ano atual</span>
+        </span>
+      </label>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-danger" id="btnDeleteFeriado" style="display:none;">Excluir</button>
+      <button class="btn btn-secondary" data-close="overlayFeriado">Cancelar</button>
+      <button class="btn btn-primary" id="btnSaveFeriado">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: SELETOR DE MÊS -->
+<div class="overlay" id="overlayMonth">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Selecionar mês</div>
+      <button class="sheet-close" data-close="overlayMonth">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="year-selector">
+        <button id="yearPrev">◀</button>
+        <div class="year-label" id="yearLabel">—</div>
+        <button id="yearNext">▶</button>
+      </div>
+      <div class="month-grid" id="monthGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: FÉRIAS -->
+<div class="overlay" id="overlayFerias">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title" id="feriasTitle">Marcar férias</div>
+      <button class="sheet-close" data-close="overlayFerias">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div id="feriasListWrap"></div>
+      <div class="form-group">
+        <label for="feriasInicio">Data inicial</label>
+        <input type="date" id="feriasInicio">
+      </div>
+      <div class="form-group">
+        <label for="feriasFim">Data final (opcional)</label>
+        <input type="date" id="feriasFim">
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-danger" id="btnDeleteFerias" style="display:none;">Excluir</button>
+      <button class="btn btn-secondary" data-close="overlayFerias">Cancelar</button>
+      <button class="btn btn-primary" id="btnSaveFerias">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: BACKUP (com bloco de nuvem + auto) -->
+<div class="overlay" id="overlayBackup">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">Backup</div>
+      <button class="sheet-close" data-close="overlayBackup">✕</button>
+    </div>
+    <div class="sheet-body">
+
+      <div class="tema-toggle" id="temaToggle" role="button" tabindex="0">
+        <span class="tema-icon" id="temaIcone">🌙</span>
+        <span class="tema-txt">
+          <span class="tema-titulo" id="temaTitulo">Modo escuro</span>
+          <span class="tema-sub" id="temaSub">Ativa o tema escuro do app</span>
+        </span>
+        <span class="switch"></span>
+      </div>
+
+      <div class="cloud-bloco" id="cloudBloco">
+        <div class="cloud-titulo">☁️ Backup em nuvem</div>
+
+        <div class="cloud-info" id="cloudInfo">
+          <span class="cloud-vazio">Nenhum backup enviado ainda</span>
+        </div>
+
+        <div class="cloud-aviso" id="cloudAvisoBackend" style="display:none;">
+          <span>⚠️</span>
+          <span>Configure o WhatsApp (URL do backend + API Key) para ativar o backup em nuvem.</span>
+        </div>
+
+        <div class="cloud-aviso" id="cloudAvisoVelho" style="display:none;">
+          <span>⏰</span>
+          <span>Seu último backup tem mais de 7 dias. Recomendamos enviar um novo.</span>
+        </div>
+
+        <div class="cloud-acoes">
+          <button class="cloud-btn enviar" id="cloudBtnEnviar" type="button">
+            ☁️ Enviar agora
+          </button>
+          <button class="cloud-btn restaurar" id="cloudBtnVerTodos" type="button">
+            📋 Ver todos
+          </button>
+        </div>
+
+        <div class="cloud-auto-row">
+          <div class="cloud-auto-txt">
+            <span class="cloud-auto-titulo">⚡ Backup automático</span>
+            <span class="cloud-auto-sub">Envia 60s após cada alteração</span>
+          </div>
+          <div class="cloud-switch on" id="cloudSwitchAuto" role="switch" aria-checked="true" tabindex="0"></div>
+        </div>
+
+        <div class="cloud-indicador cinza" id="cloudIndicador">
+          <span class="cloud-ind-txt" id="cloudIndTxt">💾 Nunca sincronizado</span>
+        </div>
+
+        <div class="cloud-status" id="cloudStatus"></div>
+      </div>
+
+      <div class="backup-actions">
+        <button class="btn-backup" id="btnExportar">
+          <span class="backup-icon">📤</span>
+          <span class="backup-txt">
+            <span>Fazer backup local</span>
+            <span class="backup-sub">Baixar um arquivo com todos os dados</span>
+          </span>
+        </button>
+        <button class="btn-backup" id="btnImportar">
+          <span class="backup-icon">📥</span>
+          <span class="backup-txt">
+            <span>Importar backup local</span>
+            <span class="backup-sub">Restaurar a partir de um arquivo salvo</span>
+          </span>
+        </button>
+      </div>
+      <input type="file" id="inputImport" accept="application/json,.json" style="display:none">
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" data-close="overlayBackup">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: LISTA DE TODOS OS BACKUPS -->
+<div class="overlay" id="overlayBackupList">
+  <div class="sheet">
+    <div class="sheet-header">
+      <div class="sheet-title">📋 Todos os backups</div>
+      <button class="sheet-close" data-close="overlayBackupList">✕</button>
+    </div>
+    <div class="sheet-body" id="backupListBody">
+      <div class="backup-list-carregando">⏳ Carregando...</div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-secondary" data-close="overlayBackupList">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- DROPDOWN DE AUTOCOMPLETE (flutuante) -->
+<div class="ac-dropdown" id="acDropdown"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
