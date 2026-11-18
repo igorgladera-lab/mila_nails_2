@@ -91,7 +91,7 @@ export function setFolga(key, tipo){
   marcarMudanca();
 }
 export function feriadoNaData(key){
-  if (!key || typeof key !== "string") return null; // PROTEÇÃO
+  if (!key || typeof key !== "string") return null; // Proteção
   const [y,m,d] = key.split("-").map(Number);
   for(const f of FERIADOS_NACIONAIS){
     if(f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
@@ -291,7 +291,7 @@ function groupIntoRows(items){
    MODAL DO DIA
    ========================================================= */
 export function openDayModal(key){
-  setCurrentDayKey(key); // Atualiza no state.js e window
+  setCurrentDayKey(key); // Atualiza no state.js e na window
   document.getElementById("dayTitle").textContent = formatDateLong(key);
   renderDayBody();
   atualizarChipFolga();
@@ -310,8 +310,8 @@ export function renderDayBody(){
   const body = document.getElementById("dayBody");
   body.innerHTML = "";
 
-  const k = state.currentDayKey; // Lê direto do state
-  if(!k) return; // Segurança
+  const k = state.currentDayKey; // Lê do state
+  if(!k) return;
 
   const fer = feriadoNaData(k);
   if(fer){

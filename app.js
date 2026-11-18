@@ -436,7 +436,6 @@ document.getElementById("agTipo2").addEventListener("change", e => {
 document.getElementById("btnSaveAg").addEventListener("click", () => {
   const k = state.currentDayKey;
   
-  // Validação para evitar o erro de .split()
   if (!k) {
     alert("Erro: O dia não foi selecionado corretamente. Feche o modal e abra o dia novamente.");
     return;
