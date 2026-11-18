@@ -11,7 +11,7 @@ import {
 } from "./constants.js";
 
 import {
-  uid, pad, dateKey, todayKey
+  uid, pad, dateKey, todayKey, formatDateBR
 } from "./helpers.js";
 
 import { load } from "./storage.js";
@@ -435,6 +435,13 @@ document.getElementById("agTipo2").addEventListener("change", e => {
 
 document.getElementById("btnSaveAg").addEventListener("click", () => {
   const k = state.currentDayKey;
+  
+  // Validação para evitar o erro de .split()
+  if (!k) {
+    alert("Erro: O dia não foi selecionado corretamente. Feche o modal e abra o dia novamente.");
+    return;
+  }
+
   const hora     = document.getElementById("agHora").value.trim();
   const cliente  = document.getElementById("agCliente").value.trim();
   const telefone = document.getElementById("agTelefone").value.trim();
@@ -490,7 +497,7 @@ document.getElementById("btnSaveAg").addEventListener("click", () => {
 
 document.getElementById("btnDeleteAg").addEventListener("click", () => {
   const k = state.currentDayKey;
-  if(!state.editingAgId) return;
+  if(!k || !state.editingAgId) return;
   if(!confirm("Excluir este agendamento?")) return;
   state.agenda[k] = (state.agenda[k] || []).filter(a => a.id !== state.editingAgId);
   import("./storage.js").then(m => m.saveAgenda(state));
