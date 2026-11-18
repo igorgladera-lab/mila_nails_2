@@ -524,6 +524,14 @@ export async function restaurarBackupPorPath(path, criadoEm, closeOverlay, rende
   }catch(err){
     body.innerHTML = '<div class="backup-list-empty">❌ Erro de rede:<br>' + escapeHtml(err.message) + '</div>';
   }
+  // Em backup-nuvem.js, dentro de restaurarBackupPorPath, perto do final:
+    console.log("Estado após restauração:", state.agenda);
+    renderGrid(); // Renderiza a tela
+    atualizarUIBackupNuvem();
+    atualizarIndicadorAuto();
+    closeOverlay("overlayBackupList");
+    closeOverlay("overlayBackup");
+    alert("✅ Backup restaurado com sucesso!");
 }
 
 export async function excluirBackupPorPath(path, abrirListaBackupsFn){
