@@ -1,26 +1,11 @@
 /**
  * agenda.js — v1.16.2
- * Renderização do calendário, modal do dia, form de agendamento,
- * folga, férias (helpers de domínio de data), botão "enviar dia futuro".
  */
 
-import {
-  FERIADOS_NACIONAIS, PASSO, SS_BANNER
-} from "./constants.js";
-
-import {
-  escapeHtml, dateKey, todayKey, formatDateLong, formatDateBR,
-  periodOf, horaMinutos, minutosHora, arredondarParaCima,
-  formatBRL, diaSemanaCurto
-} from "./helpers.js";
-
+import { FERIADOS_NACIONAIS, PASSO, SS_BANNER } from "./constants.js";
+import { escapeHtml, dateKey, todayKey, formatDateLong, formatDateBR, periodOf, horaMinutos, minutosHora, arredondarParaCima, formatBRL, diaSemanaCurto } from "./helpers.js";
 import { saveAgenda, saveFolgas, saveFerias } from "./storage.js";
-
-import {
-  state,
-  setCurrentDayKey, setAgDomicilioAtivo
-} from "./state.js";
-
+import { state, setCurrentDayKey, setAgDomicilioAtivo } from "./state.js";
 import { marcarMudanca } from "./backup-nuvem.js";
 
 /* =========================================================
@@ -91,7 +76,12 @@ export function setFolga(key, tipo){
   marcarMudanca();
 }
 export function feriadoNaData(key){
-  if (!key || typeof key !== "string") return null; // Proteção
+  // PROTEÇÃO SUPREMA: Se não for string, tenta resgatar do window.
+  if (!key || typeof key !== "string") {
+    if (window.__milaCurrentDayKey) key = window.__milaCurrentDayKey;
+    else return null; 
+  }
+  
   const [y,m,d] = key.split("-").map(Number);
   for(const f of FERIADOS_NACIONAIS){
     if(f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
@@ -291,7 +281,8 @@ function groupIntoRows(items){
    MODAL DO DIA
    ========================================================= */
 export function openDayModal(key){
-  setCurrentDayKey(key); // Atualiza no state.js e na window
+  window.__milaCurrentDayKey = key; // Força o preenchimento global
+  setCurrentDayKey(key);            // Atualiza no state
   document.getElementById("dayTitle").textContent = formatDateLong(key);
   renderDayBody();
   atualizarChipFolga();
@@ -300,9 +291,10 @@ export function openDayModal(key){
 }
 
 export function atualizarChipFolga(){
+  const k = window.__milaCurrentDayKey;
   const chip = document.getElementById("chipFolga");
-  if(!state.currentDayKey){ chip.classList.remove("ativo"); return; }
-  if(folgaNaData(state.currentDayKey)) chip.classList.add("ativo");
+  if(!k){ chip.classList.remove("ativo"); return; }
+  if(folgaNaData(k)) chip.classList.add("ativo");
   else chip.classList.remove("ativo");
 }
 
@@ -310,7 +302,7 @@ export function renderDayBody(){
   const body = document.getElementById("dayBody");
   body.innerHTML = "";
 
-  const k = state.currentDayKey; // Lê do state
+  const k = window.__milaCurrentDayKey;
   if(!k) return;
 
   const fer = feriadoNaData(k);
@@ -435,14 +427,11 @@ export function renderDayBody(){
   renderBotaoEnviarDiaFuturo(body, abrirLembretesFn);
 }
 
-/* =========================================================
-   BOTÃO "ENVIAR LEMBRETES DESTE DIA"
-   ========================================================= */
 let abrirLembretesFn = null;
 export function setAbrirLembretesFn(fn){ abrirLembretesFn = fn; }
 
 export function renderBotaoEnviarDiaFuturo(body){
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
   if(!k) return;
   if(k <= todayKey()) return;
   const cfg = state.whatsapp;
