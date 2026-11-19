@@ -1,102 +1,63 @@
 /**
  * app.js — v1.16.2
- * Orquestrador. Importa todos os módulos, liga eventos e chama boot().
- * Depende de: todos os módulos.
  */
 
-/* =========================================================
-   IMPORTS
-   ========================================================= */
-import {
-  LS_TIPOS, LS_AGENDA, LS_FERIAS, LS_FOLGAS, LS_FERIADOS, LS_CONFIG,
-  LS_TEMA, LS_CONFIG_DOM, LS_WHATSAPP, LS_CLIENTES, SS_BANNER,
-  LS_DEVICE_ID, LS_BACKUP_NUVEM,
-  LS_BACKUP_AUTO, LS_BACKUP_PENDENTE, LS_BACKUP_MUDANCA_TS,
-  DEBOUNCE_MS, WEEKDAYS, MONTHS, PRESET_COLORS, AVATAR_COLORS,
-  PASSO, CONFIG_DOM_PADRAO, FERIADOS_NACIONAIS, SETE_DIAS_MS
-} from "./constants.js";
-
-import {
-  uid, pad, escapeHtml, dateKey, todayKey, dataKeyDe, dataAmanhaKey,
-  diaSemanaCurto, formatDateLong, formatDateBR, formatDataHora,
-  formatHaLegivel, periodOf, horaMinutos, minutosHora, arredondarParaCima,
-  formatBRL, formatBytes, abreviarDeviceId
-} from "./helpers.js";
-
+import { LS_BACKUP_PENDENTE } from "./constants.js";
+import { uid, pad, dateKey, todayKey, formatDateBR } from "./helpers.js";
 import { load } from "./storage.js";
-
-import {
-  state, setStatusLembretes, setDataLembretesAtual,
-  setCurrentDayKey, setAgDomicilioAtivo
-} from "./state.js";
+import { state, setStatusLembretes, setDataLembretesAtual, setCurrentDayKey, setAgDomicilioAtivo } from "./state.js";
 
 import {
   obterDeviceId, atualizarUIBackupNuvem, mostrarStatusNuvem, esconderStatusNuvem,
   montarBackupObj, enviarBackupParaNuvem, autoEstaOn, marcarMudanca,
-  sincronizarAgenda, enviarBackupAuto, forcarBackupAgora,
-  atualizarIndicadorAuto, atualizarToggleAuto, alternarAuto,
-  abrirListaBackups, restaurarBackupPorPath, excluirBackupPorPath,
-  lerMetaBackupNuvem, salvarMetaBackupNuvem
+  enviarBackupAuto, atualizarIndicadorAuto, atualizarToggleAuto, alternarAuto,
+  abrirListaBackups
 } from "./backup-nuvem.js";
 
 import {
   atualizarBotaoWhatsappFloat, abrirWhatsappConfig, salvarWhatsappConfig,
-  abrirLembretes, carregarStatusLembretes, renderLembretesPreview,
-  reenviarLembreteIndividual, enviarLembretesLote
+  abrirLembretes, carregarStatusLembretes, reenviarLembreteIndividual,
+  enviarLembretesLote
 } from "./lembretes.js";
 
 import {
-  duracao1Min, duracao2Min, inicioCliente2Min, intervaloMinutos, overlaps,
-  feriasNaData, folgaNaData, temFolgaDiaTodo, temFolgaManha, temFolgaTarde,
-  setFolga, feriadoNaData,
-  renderMonthLabel, renderFiltroBanner, renderGrid,
-  openDayModal, atualizarChipFolga, renderDayBody,
-  renderBotaoEnviarDiaFuturo, setAbrirLembretesFn
+  setFolga,
+  renderMonthLabel, renderGrid, openDayModal,
+  feriadoNaData,
+  setAbrirLembretesFn
 } from "./agenda.js";
 
 import {
-  getCliente, buscarClientesPorNome, clienteExisteComNome,
-  corAvatarPorNome, inicialNome, criarCliente,
-  oferecerCadastroAutomatico, oferecerAtualizarEnderecoCliente,
+  buscarClientesPorNome, oferecerCadastroAutomatico,
+  oferecerAtualizarEnderecoCliente,
   openClientes, renderClientesList, openClienteForm,
   salvarCliente, excluirCliente
 } from "./clientes.js";
 
 import {
-  openTipos, renderTiposList, renderColorGrid, openTipoForm, salvarTipo, excluirTipo
+  openTipos, openTipoForm, salvarTipo, excluirTipo
 } from "./tipos.js";
 
 import {
-  openFeriados, renderFeriadosNacionais, renderFeriadosCustom,
-  openFeriadoForm, salvarFeriado, excluirFeriado
+  openFeriados, openFeriadoForm, salvarFeriado, excluirFeriado
 } from "./feriados.js";
 
-import { openFeriasForm, salvarFerias, excluirFerias } from "./ferias.js";
+import { salvarFerias, excluirFerias, openFeriasForm } from "./ferias.js";
 
 import {
-  temaAtual, aplicarTema, alternarTema, atualizarToggleTema,
+  alternarTema, atualizarToggleTema,
   openOverlay, closeOverlay, algumaOverlayAberta, ligarFechamentoOverlays,
-  fecharAc, ligarAutocomplete, mostrarBannerBoasVindas, popularHorarios,
-  setCurrentDayKeyLocal
+  fecharAc, ligarAutocomplete, mostrarBannerBoasVindas, popularHorarios
 } from "./ui.js";
 
 import { ligarWhatsappConfig } from "./whatsapp-config.js";
 
-/* =========================================================
-   PONTES / DEPENDÊNCIAS CIRCULARES
-   ========================================================= */
-// agenda.js precisa abrir lembretes sem importar lembretes.js (evita ciclo)
-setAbrirLembretesFn((dataKey, avisoForce) => abrirLembretes(dataKey, openOverlay));
+// PONTE PARA O BACKUP CONSEGUIR RENDERIZAR A TELA
+window.__milaRenderGrid = renderGrid;
 
-// whatsapp-config.js usa window.__milaAbrirLembretes
+setAbrirLembretesFn((dataKey, avisoForce) => abrirLembretes(dataKey, openOverlay));
 window.__milaAbrirLembretes = () => abrirLembretes(null, openOverlay);
 
-// ui.js — popularHorarios usa currentDayKey; sincroniza ao abrir modal
-const _openDayModalOriginal = openDayModal;
-
-/* =========================================================
-   TEMA
-   ========================================================= */
 const temaToggleEl = document.getElementById("temaToggle");
 if(temaToggleEl){
   temaToggleEl.addEventListener("click", alternarTema);
@@ -105,9 +66,6 @@ if(temaToggleEl){
   });
 }
 
-/* =========================================================
-   OVERLAYS — fechamento genérico
-   ========================================================= */
 ligarFechamentoOverlays();
 
 /* =========================================================
@@ -173,12 +131,11 @@ document.getElementById("btnLimparFiltro").addEventListener("click", () => {
 });
 
 /* =========================================================
-   MODAL DO DIA — sincroniza currentDayKey com ui.popularHorarios
+   MODAL DO DIA
    ========================================================= */
 document.getElementById("chipFolga").addEventListener("click", (e) => {
   e.stopPropagation();
-  const k = window.__milaCurrentDayKey;
-  if(!k) return;
+  if(!window.__milaCurrentDayKey) return;
   closeOverlay("overlayDay");
   openOverlay("overlayFolga");
 });
@@ -388,7 +345,10 @@ function popularSelectTipo(sel, valorAtual){
 function openAgForm(agId){
   state.editingAgId = agId || null;
   const isEdit = !!agId;
-  const k = window.__milaCurrentDayKey;
+  // Captura a data NO MOMENTO em que o formulário abre (antes de qualquer close de overlay)
+  // Isso evita perder a chave quando o modal do dia é fechado.
+  const k = window.__milaCurrentDayKey || state.currentDayKey || null;
+  state.editingAgDate = k; // guarda de forma confiável para o save/delete
 
   document.getElementById("agTitle").textContent = isEdit ? "Editar agendamento" : "Novo agendamento";
   document.getElementById("btnDeleteAg").style.display = isEdit ? "block" : "none";
@@ -460,7 +420,36 @@ document.getElementById("agTipo2").addEventListener("change", e => {
 });
 
 document.getElementById("btnSaveAg").addEventListener("click", () => {
-  const k = window.__milaCurrentDayKey;
+  // Prioridade 1: data capturada no momento em que o formulário foi aberto
+  // Prioridade 2: ponte global / state
+  // Prioridade 3: fallback lendo o título do modal do dia (robusto a acentos)
+  let k = state.editingAgDate || window.__milaCurrentDayKey || state.currentDayKey || null;
+
+  if (!k) {
+    const titulo = document.getElementById("dayTitle")?.textContent || "";
+    // \S+ captura "março", "fevereiro" etc. (acentos e tudo)
+    const match = titulo.match(/(\d{1,2}) de (\S+) de (\d{4})/i);
+    if (match) {
+      const meses = {
+        "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6,
+        "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12
+      };
+      const d = match[1].padStart(2, "0");
+      const mesNome = match[2].toLowerCase();
+      const mesNum = meses[mesNome];
+      if (mesNum) {
+        const m = String(mesNum).padStart(2, "0");
+        const y = match[3];
+        k = y + "-" + m + "-" + d;
+      }
+    }
+  }
+
+  if (!k || typeof k !== "string" || !k.includes("-")) {
+    alert("Erro: A data não foi identificada. Feche o modal e abra novamente o dia.");
+    return;
+  }
+
   const hora     = document.getElementById("agHora").value.trim();
   const cliente  = document.getElementById("agCliente").value.trim();
   const telefone = document.getElementById("agTelefone").value.trim();
@@ -500,7 +489,7 @@ document.getElementById("btnSaveAg").addEventListener("click", () => {
     state.agenda[k].push(ag);
   }
 
-  saveAgendaLocal();
+  import("./storage.js").then(m => m.saveAgenda(state));
   marcarMudanca();
   closeOverlay("overlayAg");
   renderGrid();
@@ -515,19 +504,15 @@ document.getElementById("btnSaveAg").addEventListener("click", () => {
 });
 
 document.getElementById("btnDeleteAg").addEventListener("click", () => {
-  const k = window.__milaCurrentDayKey;
-  if(!state.editingAgId) return;
+  const k = state.editingAgDate || window.__milaCurrentDayKey || state.currentDayKey;
+  if(!k || !state.editingAgId) return;
   if(!confirm("Excluir este agendamento?")) return;
   state.agenda[k] = (state.agenda[k] || []).filter(a => a.id !== state.editingAgId);
-  saveAgendaLocal();
+  import("./storage.js").then(m => m.saveAgenda(state));
   marcarMudanca();
   closeOverlay("overlayAg");
   renderGrid();
 });
-
-function saveAgendaLocal(){
-  import("./storage.js").then(m => m.saveAgenda(state));
-}
 
 /* =========================================================
    CLIENTES
@@ -581,11 +566,14 @@ document.getElementById("btnBackupFloat").addEventListener("click", () => {
 });
 
 document.getElementById("cloudBtnEnviar").addEventListener("click", enviarBackupParaNuvem);
-document.getElementById("cloudBtnVerTodos").addEventListener("click", () => abrirListaBackups(openOverlay));
+document.getElementById("cloudBtnVerTodos").addEventListener("click", () => abrirListaBackups(openOverlay, closeOverlay));
 document.getElementById("cloudSwitchAuto").addEventListener("click", alternarAuto);
 document.getElementById("cloudSwitchAuto").addEventListener("keydown", e => {
   if(e.key === "Enter" || e.key === " "){ e.preventDefault(); alternarAuto(); }
 });
+
+// ... (Resto do código de importar/exportar backup, config, tema, swipe, boot) ...
+// O código abaixo é o restante padrão que já tínhamos:
 
 document.getElementById("btnExportar").addEventListener("click", () => {
   const dados = montarBackupObj();
@@ -672,9 +660,6 @@ document.getElementById("inputImport").addEventListener("change", e => {
   reader.readAsText(file);
 });
 
-/* =========================================================
-   CONFIG: MENU
-   ========================================================= */
 document.getElementById("btnConfig").addEventListener("click", () => openOverlay("overlayConfig"));
 document.getElementById("cfgBtnClientes").addEventListener("click", () => { closeOverlay("overlayConfig"); openClientes(openOverlay); });
 document.getElementById("cfgBtnTipos").addEventListener("click",    () => { closeOverlay("overlayConfig"); openTipos(openOverlay); });
@@ -698,19 +683,9 @@ document.getElementById("cfgDuracaoDomicilio").addEventListener("input", e => {
   import("./storage.js").then(m => m.saveConfigDomicilio(state));
 });
 
-/* =========================================================
-   WHATSAPP CONFIG
-   ========================================================= */
 ligarWhatsappConfig(openOverlay, closeOverlay);
-
-/* =========================================================
-   LEMBRETES — botão "Enviar lembretes"
-   ========================================================= */
 document.getElementById("btnEnviarLembretes").addEventListener("click", enviarLembretesLote);
 
-/* =========================================================
-   NAVEGAÇÃO
-   ========================================================= */
 function irMesAnterior(){
   state.viewMonth--;
   if(state.viewMonth < 0){ state.viewMonth = 11; state.viewYear--; }
@@ -724,9 +699,6 @@ function irProximoMes(){
 document.getElementById("btnPrev").addEventListener("click", irMesAnterior);
 document.getElementById("btnNext").addEventListener("click", irProximoMes);
 
-/* =========================================================
-   SELETOR DE MÊS
-   ========================================================= */
 document.getElementById("btnMonthPicker").addEventListener("click", () => {
   state.pickerYear = state.viewYear;
   renderMonthPicker();
@@ -754,9 +726,6 @@ function renderMonthPicker(){
 document.getElementById("yearPrev").addEventListener("click", () => { state.pickerYear--; renderMonthPicker(); });
 document.getElementById("yearNext").addEventListener("click", () => { state.pickerYear++; renderMonthPicker(); });
 
-/* =========================================================
-   SWIPE
-   ========================================================= */
 (function configurarSwipe(){
   const el = document.getElementById("calendarWrap");
   let startX = 0, startY = 0, startT = 0, tracking = false;
@@ -790,20 +759,6 @@ window.addEventListener("resize", fecharAc);
 window.addEventListener("scroll", fecharAc, true);
 document.getElementById("calendarWrap").addEventListener("scroll", fecharAc, {passive:true});
 
-/* =========================================================
-   PONTE currentDayKey → window (para handlers acima)
-   ========================================================= */
-const _openDayModalWrapper = (key) => {
-  window.__milaCurrentDayKey = key;
-  setCurrentDayKey(key);
-  setCurrentDayKeyLocal(key);
-  _openDayModalOriginal(key);
-};
-window.__milaOpenDayModal = _openDayModalWrapper;
-
-/* =========================================================
-   BOOT
-   ========================================================= */
 function boot(){
   load(state);
   const now = new Date();

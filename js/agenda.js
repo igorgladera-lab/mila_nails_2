@@ -2,7 +2,6 @@
  * agenda.js — v1.16.2
  * Renderização do calendário, modal do dia, form de agendamento,
  * folga, férias (helpers de domínio de data), botão "enviar dia futuro".
- * Depende de: constants, helpers, storage, state.
  */
 
 import {
@@ -19,13 +18,13 @@ import { saveAgenda, saveFolgas, saveFerias } from "./storage.js";
 
 import {
   state,
-  setCurrentDayKey, setAgDomicilioAtivo, currentDayKey, agDomicilioAtivo
+  setCurrentDayKey, setAgDomicilioAtivo
 } from "./state.js";
 
 import { marcarMudanca } from "./backup-nuvem.js";
 
 /* =========================================================
-   HELPERS DE DOMÍNIO (data / folga / feriado / férias)
+   HELPERS DE DOMÍNIO
    ========================================================= */
 export function duracao1Min(ag){
   if(ag && ag.domicilio) return state.configDomicilio.duracao;
@@ -92,15 +91,32 @@ export function setFolga(key, tipo){
   marcarMudanca();
 }
 export function feriadoNaData(key){
-  const [y,m,d] = key.split("-").map(Number);
-  for(const f of FERIADOS_NACIONAIS){
-    if(f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
+  // Blindagem: nunca chamar .split em valor inválido
+  if (!key || typeof key !== "string") {
+    key = window.__milaCurrentDayKey || (state && state.currentDayKey) || null;
+    if (!key || typeof key !== "string") return null;
   }
-  for(const f of state.feriadosCustom){
-    if(f.mes === m && f.dia === d){
-      if(f.anual) return { tipo: "custom", nome: f.nome };
-      if(f.ano === y) return { tipo: "custom", nome: f.nome };
+  if (!key.includes("-")) return null;
+
+  try {
+    const parts = key.split("-");
+    if (parts.length < 3) return null;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return null;
+
+    for (const f of FERIADOS_NACIONAIS) {
+      if (f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
     }
+    for (const f of (state.feriadosCustom || [])) {
+      if (f.mes === m && f.dia === d) {
+        if (f.anual) return { tipo: "custom", nome: f.nome };
+        if (f.ano === y) return { tipo: "custom", nome: f.nome };
+      }
+    }
+  } catch (e) {
+    return null;
   }
   return null;
 }
@@ -291,7 +307,8 @@ function groupIntoRows(items){
    MODAL DO DIA
    ========================================================= */
 export function openDayModal(key){
-  setCurrentDayKey(key);
+  window.__milaCurrentDayKey = key; // Força o preenchimento global
+  setCurrentDayKey(key);            // Atualiza no state
   document.getElementById("dayTitle").textContent = formatDateLong(key);
   renderDayBody();
   atualizarChipFolga();
@@ -300,9 +317,10 @@ export function openDayModal(key){
 }
 
 export function atualizarChipFolga(){
+  const k = window.__milaCurrentDayKey;
   const chip = document.getElementById("chipFolga");
-  if(!currentDayKey){ chip.classList.remove("ativo"); return; }
-  if(folgaNaData(currentDayKey)) chip.classList.add("ativo");
+  if(!k){ chip.classList.remove("ativo"); return; }
+  if(folgaNaData(k)) chip.classList.add("ativo");
   else chip.classList.remove("ativo");
 }
 
@@ -310,14 +328,17 @@ export function renderDayBody(){
   const body = document.getElementById("dayBody");
   body.innerHTML = "";
 
-  const fer = feriadoNaData(currentDayKey);
+  const k = window.__milaCurrentDayKey;
+  if(!k) return;
+
+  const fer = feriadoNaData(k);
   if(fer){
     const b = document.createElement("div");
     b.className = "feriado-banner";
     b.innerHTML = '<span class="fb-icon">' + (fer.tipo === "nacional" ? "🇧🇷" : "🎉") + '</span><span>' + escapeHtml(fer.nome) + '</span>';
     body.appendChild(b);
   }
-  const folga = folgaNaData(currentDayKey);
+  const folga = folgaNaData(k);
   if(folga){
     const b = document.createElement("div");
     b.className = "folga-banner";
@@ -328,7 +349,7 @@ export function renderDayBody(){
     b.innerHTML = '<span class="fb-icon">🛌</span><span>' + txt + '</span>';
     body.appendChild(b);
   }
-  const f = feriasNaData(currentDayKey);
+  const f = feriasNaData(k);
   if(f){
     const b = document.createElement("div");
     b.className = "vacation-banner";
@@ -343,7 +364,7 @@ export function renderDayBody(){
     body.appendChild(b);
   }
 
-  const ags = (state.agenda[currentDayKey] || []).slice();
+  const ags = (state.agenda[k] || []).slice();
   if(ags.length === 0){
     const empty = document.createElement("div");
     empty.className = "empty-msg";
@@ -432,23 +453,21 @@ export function renderDayBody(){
   renderBotaoEnviarDiaFuturo(body, abrirLembretesFn);
 }
 
-/* =========================================================
-   BOTÃO "ENVIAR LEMBRETES DESTE DIA"
-   ========================================================= */
 let abrirLembretesFn = null;
 export function setAbrirLembretesFn(fn){ abrirLembretesFn = fn; }
 
 export function renderBotaoEnviarDiaFuturo(body){
-  if(!currentDayKey) return;
-  if(currentDayKey <= todayKey()) return;
+  const k = window.__milaCurrentDayKey;
+  if(!k) return;
+  if(k <= todayKey()) return;
   const cfg = state.whatsapp;
   if(!cfg.ativo || !cfg.backendUrl || !cfg.apiKey) return;
-  const ags = state.agenda[currentDayKey] || [];
+  const ags = state.agenda[k] || [];
   if(!ags.some(a => a.telefone || (a.duplo && a.telefone2))) return;
 
-  const fer = feriadoNaData(currentDayKey);
-  const feria = feriasNaData(currentDayKey);
-  const folga = folgaNaData(currentDayKey);
+  const fer = feriadoNaData(k);
+  const feria = feriasNaData(k);
+  const folga = folgaNaData(k);
   const temAviso = !!(fer || feria || folga);
 
   const btn = document.createElement("button");
@@ -473,7 +492,7 @@ export function renderBotaoEnviarDiaFuturo(body){
       if(!ok) return;
     }
     document.getElementById("overlayDay").classList.remove("show");
-    if(abrirLembretesFn) abrirLembretesFn(currentDayKey, temAviso);
+    if(abrirLembretesFn) abrirLembretesFn(k, temAviso);
   });
   body.appendChild(btn);
 }
