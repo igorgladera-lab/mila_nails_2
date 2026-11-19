@@ -76,22 +76,33 @@ export function setFolga(key, tipo){
   marcarMudanca();
 }
 export function feriadoNaData(key){
-  // PROTEÇÃO SUPREMA: Se não for string, tenta resgatar do window.
+  // BLINDAGEM TOTAL: Se não for string, tenta resgatar do window ou retorna null.
   if (!key || typeof key !== "string") {
-    if (window.__milaCurrentDayKey) key = window.__milaCurrentDayKey;
-    else return null; 
-  }
-  
-  const [y,m,d] = key.split("-").map(Number);
-  for(const f of FERIADOS_NACIONAIS){
-    if(f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
-  }
-  for(const f of state.feriadosCustom){
-    if(f.mes === m && f.dia === d){
-      if(f.anual) return { tipo: "custom", nome: f.nome };
-      if(f.ano === y) return { tipo: "custom", nome: f.nome };
+    if (window.__milaCurrentDayKey && typeof window.__milaCurrentDayKey === "string") {
+      key = window.__milaCurrentDayKey;
+    } else {
+      return null; // Não quebra o app, apenas ignora o feriado
     }
   }
+  
+  // Se a string não tiver o formato correto (ex: YYYY-MM-DD), retorna null
+  if (!key.includes("-")) return null;
+
+  try {
+    const [y,m,d] = key.split("-").map(Number);
+    for(const f of FERIADOS_NACIONAIS){
+      if(f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
+    }
+    for(const f of state.feriadosCustom){
+      if(f.mes === m && f.dia === d){
+        if(f.anual) return { tipo: "custom", nome: f.nome };
+        if(f.ano === y) return { tipo: "custom", nome: f.nome };
+      }
+    }
+  } catch(e) {
+    console.warn("Erro ao processar feriado para:", key, e);
+  }
+  
   return null;
 }
 
