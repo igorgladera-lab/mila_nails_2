@@ -569,7 +569,7 @@ document.getElementById("btnBackupFloat").addEventListener("click", () => {
 });
 
 document.getElementById("cloudBtnEnviar").addEventListener("click", enviarBackupParaNuvem);
-document.getElementById("cloudBtnVerTodos").addEventListener("click", () => abrirListaBackups(openOverlay, closeOverlay));
+document.getElementById("cloudBtnVerTodos").addEventListener("click", () => abrirListaBackups(openOverlay, closeOverlay, renderGrid));
 document.getElementById("cloudSwitchAuto").addEventListener("click", alternarAuto);
 document.getElementById("cloudSwitchAuto").addEventListener("keydown", e => {
   if(e.key === "Enter" || e.key === " "){ e.preventDefault(); alternarAuto(); }

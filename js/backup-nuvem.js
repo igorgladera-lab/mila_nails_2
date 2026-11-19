@@ -382,13 +382,28 @@ export function alternarAuto(){
 /* =========================================================
    LISTA DE BACKUPS (v1.13)
    ========================================================= */
-export async function abrirListaBackups(openOverlay){
+// Callbacks injetados por app.js ao abrir a lista (evita dependência circular)
+let _openOverlayFn = null;
+let _closeOverlayFn = null;
+let _renderGridFn = null;
+
+export async function abrirListaBackups(openOverlay, closeOverlay, renderGrid){
+  _openOverlayFn = typeof openOverlay === "function" ? openOverlay : null;
+  _closeOverlayFn = typeof closeOverlay === "function" ? closeOverlay : null;
+  _renderGridFn = typeof renderGrid === "function"
+    ? renderGrid
+    : (typeof window !== "undefined" ? window.__milaRenderGrid : null);
+
   const cfg = state.whatsapp;
   if(!cfg.backendUrl || !cfg.apiKey){
     mostrarStatusNuvem("erro", "❌ Configure o WhatsApp antes de listar.");
     return;
   }
-  openOverlay("overlayBackupList");
+  if (_openOverlayFn) _openOverlayFn("overlayBackupList");
+  else {
+    const el = document.getElementById("overlayBackupList");
+    if (el) el.classList.add("show");
+  }
 
   const body = document.getElementById("backupListBody");
   body.innerHTML = '<div class="backup-list-carregando">⏳ Carregando...</div>';
@@ -407,6 +422,23 @@ export async function abrirListaBackups(openOverlay){
   }catch(err){
     body.innerHTML = '<div class="backup-list-empty">❌ Erro de rede:<br>' + escapeHtml(err.message) + '</div>';
   }
+}
+
+function fecharOverlayLocal(id){
+  if (typeof _closeOverlayFn === "function") {
+    _closeOverlayFn(id);
+    return;
+  }
+  const el = document.getElementById(id);
+  if (el) el.classList.remove("show");
+  if (!document.querySelector(".overlay.show")) {
+    document.body.classList.remove("overlay-open");
+  }
+}
+
+function renderGridLocal(){
+  const fn = _renderGridFn || (typeof window !== "undefined" ? window.__milaRenderGrid : null);
+  if (typeof fn === "function") fn();
 }
 
 function renderListaBackups(backups){
@@ -435,7 +467,7 @@ function renderListaBackups(backups){
   });
 }
 
-export async function restaurarBackupPorPath(path, criadoEm, closeOverlay, renderGrid){
+export async function restaurarBackupPorPath(path, criadoEm){
   const cfg = state.whatsapp;
   if(!cfg.backendUrl || !cfg.apiKey || !path) return;
 
@@ -515,18 +547,18 @@ export async function restaurarBackupPorPath(path, criadoEm, closeOverlay, rende
     saveTipos(state); saveAgenda(state); saveFerias(state); saveFolgas(state);
     saveFeriadosCustom(state); saveConfigDomicilio(state); saveClientes(state); saveWhatsapp(state);
 
-    renderGrid();
+    renderGridLocal();
     atualizarUIBackupNuvem();
     atualizarIndicadorAuto();
-    closeOverlay("overlayBackupList");
-    closeOverlay("overlayBackup");
+    fecharOverlayLocal("overlayBackupList");
+    fecharOverlayLocal("overlayBackup");
     alert("✅ Backup restaurado com sucesso!");
   }catch(err){
     body.innerHTML = '<div class="backup-list-empty">❌ Erro de rede:<br>' + escapeHtml(err.message) + '</div>';
   }
 }
 
-export async function excluirBackupPorPath(path, abrirListaBackupsFn){
+export async function excluirBackupPorPath(path){
   const cfg = state.whatsapp;
   if(!cfg.backendUrl || !cfg.apiKey || !path) return;
   if(!confirm("Excluir este backup?\n\n⚠️ O arquivo será removido permanentemente do servidor.\nEsta ação NÃO pode ser desfeita.")) return;
@@ -541,7 +573,8 @@ export async function excluirBackupPorPath(path, abrirListaBackupsFn){
       alert("❌ Erro ao excluir: " + (data.error || resp.status));
       return;
     }
-    abrirListaBackupsFn();
+    // Recarrega a lista com os callbacks já guardados
+    await abrirListaBackups(_openOverlayFn, _closeOverlayFn, _renderGridFn);
   }catch(err){
     alert("❌ Erro de rede: " + err.message);
   }
