@@ -91,25 +91,33 @@ export function setFolga(key, tipo){
   marcarMudanca();
 }
 export function feriadoNaData(key){
-  // BLINDAGEM TOTAL: Se não for string, tenta resgatar do window ou retorna null.
+  // Blindagem: nunca chamar .split em valor inválido
   if (!key || typeof key !== "string") {
-    key = window.__milaCurrentDayKey;
+    key = window.__milaCurrentDayKey || (state && state.currentDayKey) || null;
     if (!key || typeof key !== "string") return null;
   }
   if (!key.includes("-")) return null;
-  
+
   try {
-    const [y,m,d] = key.split("-").map(Number);
-    for(const f of FERIADOS_NACIONAIS){
-      if(f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
+    const parts = key.split("-");
+    if (parts.length < 3) return null;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return null;
+
+    for (const f of FERIADOS_NACIONAIS) {
+      if (f.mes === m && f.dia === d) return { tipo: "nacional", nome: f.nome };
     }
-    for(const f of state.feriadosCustom){
-      if(f.mes === m && f.dia === d){
-        if(f.anual) return { tipo: "custom", nome: f.nome };
-        if(f.ano === y) return { tipo: "custom", nome: f.nome };
+    for (const f of (state.feriadosCustom || [])) {
+      if (f.mes === m && f.dia === d) {
+        if (f.anual) return { tipo: "custom", nome: f.nome };
+        if (f.ano === y) return { tipo: "custom", nome: f.nome };
       }
     }
-  } catch(e) { return null; }
+  } catch (e) {
+    return null;
+  }
   return null;
 }
 

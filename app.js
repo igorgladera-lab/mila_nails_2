@@ -345,7 +345,10 @@ function popularSelectTipo(sel, valorAtual){
 function openAgForm(agId){
   state.editingAgId = agId || null;
   const isEdit = !!agId;
-  const k = window.__milaCurrentDayKey;
+  // Captura a data NO MOMENTO em que o formulário abre (antes de qualquer close de overlay)
+  // Isso evita perder a chave quando o modal do dia é fechado.
+  const k = window.__milaCurrentDayKey || state.currentDayKey || null;
+  state.editingAgDate = k; // guarda de forma confiável para o save/delete
 
   document.getElementById("agTitle").textContent = isEdit ? "Editar agendamento" : "Novo agendamento";
   document.getElementById("btnDeleteAg").style.display = isEdit ? "block" : "none";
@@ -417,25 +420,33 @@ document.getElementById("agTipo2").addEventListener("change", e => {
 });
 
 document.getElementById("btnSaveAg").addEventListener("click", () => {
-  // A MÁGICA ACONTECE AQUI: Pega a data do título do modal para não depender de variáveis soltas
-  const titulo = document.getElementById("dayTitle").textContent; 
-  const match = titulo.match(/(\d{1,2}) de (\w+) de (\d{4})/);
-  
-  let k = window.__milaCurrentDayKey;
-  
-  if (match) {
-    const meses = {
-      "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6,
-      "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12
-    };
-    const d = match[1].padStart(2, "0");
-    const m = String(meses[match[2].toLowerCase()]).padStart(2, "0");
-    const y = match[3];
-    k = y + "-" + m + "-" + d; // Transforma em "2026-11-19"
-  }
+  // Prioridade 1: data capturada no momento em que o formulário foi aberto
+  // Prioridade 2: ponte global / state
+  // Prioridade 3: fallback lendo o título do modal do dia (robusto a acentos)
+  let k = state.editingAgDate || window.__milaCurrentDayKey || state.currentDayKey || null;
 
   if (!k) {
-    alert("Erro: A data não foi identificada. Feche o modal e abra novamente.");
+    const titulo = document.getElementById("dayTitle")?.textContent || "";
+    // \S+ captura "março", "fevereiro" etc. (acentos e tudo)
+    const match = titulo.match(/(\d{1,2}) de (\S+) de (\d{4})/i);
+    if (match) {
+      const meses = {
+        "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6,
+        "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12
+      };
+      const d = match[1].padStart(2, "0");
+      const mesNome = match[2].toLowerCase();
+      const mesNum = meses[mesNome];
+      if (mesNum) {
+        const m = String(mesNum).padStart(2, "0");
+        const y = match[3];
+        k = y + "-" + m + "-" + d;
+      }
+    }
+  }
+
+  if (!k || typeof k !== "string" || !k.includes("-")) {
+    alert("Erro: A data não foi identificada. Feche o modal e abra novamente o dia.");
     return;
   }
 
@@ -493,7 +504,7 @@ document.getElementById("btnSaveAg").addEventListener("click", () => {
 });
 
 document.getElementById("btnDeleteAg").addEventListener("click", () => {
-  const k = window.__milaCurrentDayKey;
+  const k = state.editingAgDate || window.__milaCurrentDayKey || state.currentDayKey;
   if(!k || !state.editingAgId) return;
   if(!confirm("Excluir este agendamento?")) return;
   state.agenda[k] = (state.agenda[k] || []).filter(a => a.id !== state.editingAgId);
