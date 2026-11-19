@@ -1,11 +1,26 @@
 /**
  * agenda.js — v1.16.2
+ * Renderização do calendário, modal do dia, form de agendamento,
+ * folga, férias (helpers de domínio de data), botão "enviar dia futuro".
  */
 
-import { FERIADOS_NACIONAIS, PASSO, SS_BANNER } from "./constants.js";
-import { escapeHtml, dateKey, todayKey, formatDateLong, formatDateBR, periodOf, horaMinutos, minutosHora, arredondarParaCima, formatBRL, diaSemanaCurto } from "./helpers.js";
+import {
+  FERIADOS_NACIONAIS, PASSO, SS_BANNER
+} from "./constants.js";
+
+import {
+  escapeHtml, dateKey, todayKey, formatDateLong, formatDateBR,
+  periodOf, horaMinutos, minutosHora, arredondarParaCima,
+  formatBRL, diaSemanaCurto
+} from "./helpers.js";
+
 import { saveAgenda, saveFolgas, saveFerias } from "./storage.js";
-import { state, setCurrentDayKey, setAgDomicilioAtivo } from "./state.js";
+
+import {
+  state,
+  setCurrentDayKey, setAgDomicilioAtivo
+} from "./state.js";
+
 import { marcarMudanca } from "./backup-nuvem.js";
 
 /* =========================================================
@@ -78,16 +93,11 @@ export function setFolga(key, tipo){
 export function feriadoNaData(key){
   // BLINDAGEM TOTAL: Se não for string, tenta resgatar do window ou retorna null.
   if (!key || typeof key !== "string") {
-    if (window.__milaCurrentDayKey && typeof window.__milaCurrentDayKey === "string") {
-      key = window.__milaCurrentDayKey;
-    } else {
-      return null; // Não quebra o app, apenas ignora o feriado
-    }
+    key = window.__milaCurrentDayKey;
+    if (!key || typeof key !== "string") return null;
   }
-  
-  // Se a string não tiver o formato correto (ex: YYYY-MM-DD), retorna null
   if (!key.includes("-")) return null;
-
+  
   try {
     const [y,m,d] = key.split("-").map(Number);
     for(const f of FERIADOS_NACIONAIS){
@@ -99,10 +109,7 @@ export function feriadoNaData(key){
         if(f.ano === y) return { tipo: "custom", nome: f.nome };
       }
     }
-  } catch(e) {
-    console.warn("Erro ao processar feriado para:", key, e);
-  }
-  
+  } catch(e) { return null; }
   return null;
 }
 

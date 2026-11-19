@@ -1,11 +1,7 @@
 /**
  * app.js — v1.16.2
- * Orquestrador. Importa todos os módulos, liga eventos e chama boot().
  */
 
-/* =========================================================
-   IMPORTS
-   ========================================================= */
 import { LS_BACKUP_PENDENTE } from "./constants.js";
 import { uid, pad, dateKey, todayKey, formatDateBR } from "./helpers.js";
 import { load } from "./storage.js";
@@ -56,15 +52,12 @@ import {
 
 import { ligarWhatsappConfig } from "./whatsapp-config.js";
 
-/* =========================================================
-   PONTES / DEPENDÊNCIAS CIRCULARES
-   ========================================================= */
+// PONTE PARA O BACKUP CONSEGUIR RENDERIZAR A TELA
+window.__milaRenderGrid = renderGrid;
+
 setAbrirLembretesFn((dataKey, avisoForce) => abrirLembretes(dataKey, openOverlay));
 window.__milaAbrirLembretes = () => abrirLembretes(null, openOverlay);
 
-/* =========================================================
-   TEMA
-   ========================================================= */
 const temaToggleEl = document.getElementById("temaToggle");
 if(temaToggleEl){
   temaToggleEl.addEventListener("click", alternarTema);
@@ -142,7 +135,7 @@ document.getElementById("btnLimparFiltro").addEventListener("click", () => {
    ========================================================= */
 document.getElementById("chipFolga").addEventListener("click", (e) => {
   e.stopPropagation();
-  if(!state.currentDayKey) return;
+  if(!window.__milaCurrentDayKey) return;
   closeOverlay("overlayDay");
   openOverlay("overlayFolga");
 });
@@ -163,7 +156,7 @@ document.getElementById("btnAddAg").addEventListener("click", (e) => {
    FOLGA
    ========================================================= */
 document.getElementById("folgaOpDiaTodo").addEventListener("click", () => {
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
   if(!k) return;
   if(state.folgas[k] === "dia-todo") setFolga(k, null);
   else setFolga(k, "dia-todo");
@@ -178,7 +171,7 @@ document.getElementById("folgaOpPeriodo").addEventListener("click", () => {
 });
 
 function atualizarOverlayFolgaPeriodo(){
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
   const opM = document.getElementById("folgaOpManha");
   const opT = document.getElementById("folgaOpTarde");
   opM.classList.remove("ativo"); opT.classList.remove("ativo");
@@ -189,7 +182,7 @@ function atualizarOverlayFolgaPeriodo(){
 }
 
 document.getElementById("folgaOpManha").addEventListener("click", () => {
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
   if(!k) return;
   const v = state.folgas[k];
   if(v === "manha") setFolga(k, null);
@@ -201,7 +194,7 @@ document.getElementById("folgaOpManha").addEventListener("click", () => {
 });
 
 document.getElementById("folgaOpTarde").addEventListener("click", () => {
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
   if(!k) return;
   const v = state.folgas[k];
   if(v === "tarde") setFolga(k, null);
@@ -218,7 +211,7 @@ document.getElementById("btnVoltarFolga").addEventListener("click", () => {
 });
 
 document.getElementById("btnLimparFolga").addEventListener("click", () => {
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
   if(!k) return;
   setFolga(k, null);
   closeOverlay("overlayFolgaPeriodo");
@@ -352,7 +345,7 @@ function popularSelectTipo(sel, valorAtual){
 function openAgForm(agId){
   state.editingAgId = agId || null;
   const isEdit = !!agId;
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
 
   document.getElementById("agTitle").textContent = isEdit ? "Editar agendamento" : "Novo agendamento";
   document.getElementById("btnDeleteAg").style.display = isEdit ? "block" : "none";
@@ -424,10 +417,25 @@ document.getElementById("agTipo2").addEventListener("change", e => {
 });
 
 document.getElementById("btnSaveAg").addEventListener("click", () => {
-  const k = state.currentDayKey;
+  // A MÁGICA ACONTECE AQUI: Pega a data do título do modal para não depender de variáveis soltas
+  const titulo = document.getElementById("dayTitle").textContent; 
+  const match = titulo.match(/(\d{1,2}) de (\w+) de (\d{4})/);
   
+  let k = window.__milaCurrentDayKey;
+  
+  if (match) {
+    const meses = {
+      "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6,
+      "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12
+    };
+    const d = match[1].padStart(2, "0");
+    const m = String(meses[match[2].toLowerCase()]).padStart(2, "0");
+    const y = match[3];
+    k = y + "-" + m + "-" + d; // Transforma em "2026-11-19"
+  }
+
   if (!k) {
-    alert("Erro: O dia não foi selecionado corretamente. Feche o modal e abra o dia novamente.");
+    alert("Erro: A data não foi identificada. Feche o modal e abra novamente.");
     return;
   }
 
@@ -485,7 +493,7 @@ document.getElementById("btnSaveAg").addEventListener("click", () => {
 });
 
 document.getElementById("btnDeleteAg").addEventListener("click", () => {
-  const k = state.currentDayKey;
+  const k = window.__milaCurrentDayKey;
   if(!k || !state.editingAgId) return;
   if(!confirm("Excluir este agendamento?")) return;
   state.agenda[k] = (state.agenda[k] || []).filter(a => a.id !== state.editingAgId);
@@ -547,13 +555,99 @@ document.getElementById("btnBackupFloat").addEventListener("click", () => {
 });
 
 document.getElementById("cloudBtnEnviar").addEventListener("click", enviarBackupParaNuvem);
-document.getElementById("cloudBtnVerTodos").addEventListener("click", () => abrirListaBackups(openOverlay, renderGrid)); // <-- renderGrid passado
+document.getElementById("cloudBtnVerTodos").addEventListener("click", () => abrirListaBackups(openOverlay, closeOverlay));
 document.getElementById("cloudSwitchAuto").addEventListener("click", alternarAuto);
 document.getElementById("cloudSwitchAuto").addEventListener("keydown", e => {
   if(e.key === "Enter" || e.key === " "){ e.preventDefault(); alternarAuto(); }
 });
 
-// ... (resto do código de import/export e botões normais)
+// ... (Resto do código de importar/exportar backup, config, tema, swipe, boot) ...
+// O código abaixo é o restante padrão que já tínhamos:
+
+document.getElementById("btnExportar").addEventListener("click", () => {
+  const dados = montarBackupObj();
+  const agora = new Date();
+  const dataArq = agora.getFullYear() + "-" + pad(agora.getMonth()+1) + "-" + pad(agora.getDate());
+  const blob = new Blob([JSON.stringify(dados, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "mila_nails_backup_" + dataArq + ".json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  closeOverlay("overlayBackup");
+  alert("Backup gerado: mila_nails_backup_" + dataArq + ".json");
+});
+
+document.getElementById("btnImportar").addEventListener("click", () => {
+  document.getElementById("inputImport").click();
+});
+
+document.getElementById("inputImport").addEventListener("change", e => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const dados = JSON.parse(ev.target.result);
+      if(!dados || typeof dados !== "object" || !Array.isArray(dados.tipos) ||
+         typeof dados.agenda !== "object" || !Array.isArray(dados.ferias)){
+        alert("Arquivo inválido. Selecione um backup gerado pelo app.");
+        return;
+      }
+      const qtdClientes = Array.isArray(dados.clientes) ? dados.clientes.length : 0;
+      if(!confirm("Substituir TODOS os dados atuais pelos do backup?\n\n" +
+        "• Tipos: " + dados.tipos.length + "\n" +
+        "• Dias com agendamento: " + Object.keys(dados.agenda).length + "\n" +
+        "• Períodos de férias: " + dados.ferias.length + "\n" +
+        "• Clientes: " + qtdClientes + "\n\n" +
+        "Esta ação NÃO pode ser desfeita.")) return;
+
+      state.tipos = dados.tipos;
+      state.agenda = dados.agenda;
+      state.ferias = dados.ferias;
+      state.folgas = {};
+      if(Array.isArray(dados.folgas)) dados.folgas.forEach(k => { state.folgas[k] = "dia-todo"; });
+      else if(dados.folgas && typeof dados.folgas === "object") state.folgas = dados.folgas;
+      state.feriadosCustom = Array.isArray(dados.feriados_custom) ? dados.feriados_custom : [];
+      state.clientes = Array.isArray(dados.clientes) ? dados.clientes.filter(c =>
+        c && typeof c === "object" && typeof c.nome === "string" && c.nome.trim() !== ""
+      ).map(c => ({
+        id: c.id || uid(), nome: c.nome.trim(),
+        telefone: typeof c.telefone === "string" ? c.telefone : "",
+        endereco: typeof c.endereco === "string" ? c.endereco : "",
+        criadoEm: typeof c.criadoEm === "string" ? c.criadoEm : new Date().toISOString()
+      })) : [];
+
+      if(dados.config_domicilio && typeof dados.config_domicilio === "object"){
+        state.configDomicilio = {
+          taxa: (typeof dados.config_domicilio.taxa === "number" && dados.config_domicilio.taxa >= 0)
+            ? dados.config_domicilio.taxa : CONFIG_DOM_PADRAO.taxa,
+          duracao: (typeof dados.config_domicilio.duracao === "number" && dados.config_domicilio.duracao > 0)
+            ? dados.config_domicilio.duracao : CONFIG_DOM_PADRAO.duracao
+        };
+      } else state.configDomicilio = { ...CONFIG_DOM_PADRAO };
+
+      if(dados.lembretes_config && typeof dados.lembretes_config === "object"){
+        if(dados.lembretes_config.modo === "manual" || dados.lembretes_config.modo === "auto" || dados.lembretes_config.modo === "ambos")
+          state.whatsapp.modo = dados.lembretes_config.modo;
+        if(typeof dados.lembretes_config.maxReenvios === "number") state.whatsapp.maxReenvios = dados.lembretes_config.maxReenvios;
+        if(typeof dados.lembretes_config.intervaloReenvio === "number") state.whatsapp.intervaloReenvio = dados.lembretes_config.intervaloReenvio;
+      }
+
+      import("./storage.js").then(m => {
+        m.saveTipos(state); m.saveAgenda(state); m.saveFerias(state); m.saveFolgas(state);
+        m.saveFeriadosCustom(state); m.saveConfigDomicilio(state); m.saveClientes(state); m.saveWhatsapp(state);
+      });
+      closeOverlay("overlayBackup");
+      renderGrid();
+      alert("Backup restaurado com sucesso!");
+    }catch(err){
+      alert("Erro ao ler o arquivo: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
 
 document.getElementById("btnConfig").addEventListener("click", () => openOverlay("overlayConfig"));
 document.getElementById("cfgBtnClientes").addEventListener("click", () => { closeOverlay("overlayConfig"); openClientes(openOverlay); });
