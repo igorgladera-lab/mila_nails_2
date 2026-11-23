@@ -6,7 +6,7 @@
 
 import { uid, escapeHtml, formatDateBR } from "./helpers.js";
 import { saveFerias } from "./storage.js";
-import { state, currentDayKey } from "./state.js";
+import { state } from "./state.js";
 
 /* =========================================================
    UI — FORM
@@ -55,7 +55,7 @@ export function openFeriasForm(feriasId, openOverlay){
       document.getElementById("feriasFim").value    = f.fim || "";
     }
   } else {
-    document.getElementById("feriasInicio").value = currentDayKey || "";
+    document.getElementById("feriasInicio").value = state.currentDayKey || window.__milaCurrentDayKey || "";
     document.getElementById("feriasFim").value    = "";
   }
 

@@ -359,7 +359,10 @@ export function renderDayBody(){
     b.querySelector("button").addEventListener("click", (e) => {
       e.stopPropagation();
       document.getElementById("overlayDay").classList.remove("show");
-      openFeriasForm(f.id);
+      if (!document.querySelector(".overlay.show")) document.body.classList.remove("overlay-open");
+      if (typeof openFeriasFormFn === "function") openFeriasFormFn(f.id);
+      else if (typeof window.__milaOpenFeriasForm === "function") window.__milaOpenFeriasForm(f.id);
+      else console.error("openFeriasForm não registrado");
     });
     body.appendChild(b);
   }
@@ -436,7 +439,10 @@ export function renderDayBody(){
     el.innerHTML = html;
     el.addEventListener("click", () => {
       document.getElementById("overlayDay").classList.remove("show");
-      openAgForm(ag.id);
+      if (!document.querySelector(".overlay.show")) document.body.classList.remove("overlay-open");
+      if (typeof openAgFormFn === "function") openAgFormFn(ag.id);
+      else if (typeof window.__milaOpenAgForm === "function") window.__milaOpenAgForm(ag.id);
+      else console.error("openAgForm não registrado");
     });
     body.appendChild(el);
   });
@@ -455,6 +461,13 @@ export function renderDayBody(){
 
 let abrirLembretesFn = null;
 export function setAbrirLembretesFn(fn){ abrirLembretesFn = fn; }
+
+// Ponte para funções que vivem em app.js / ferias.js (evita import circular)
+let openAgFormFn = null;
+export function setOpenAgFormFn(fn){ openAgFormFn = fn; }
+
+let openFeriasFormFn = null;
+export function setOpenFeriasFormFn(fn){ openFeriasFormFn = fn; }
 
 export function renderBotaoEnviarDiaFuturo(body){
   const k = window.__milaCurrentDayKey;

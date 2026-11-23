@@ -27,7 +27,7 @@ import {
   setFolga,
   renderMonthLabel, renderGrid, openDayModal,
   feriadoNaData,
-  setAbrirLembretesFn
+  setAbrirLembretesFn, setOpenAgFormFn, setOpenFeriasFormFn
 } from "./agenda.js";
 
 import {
@@ -60,6 +60,12 @@ window.__milaRenderGrid = renderGrid;
 
 setAbrirLembretesFn((dataKey, avisoForce) => abrirLembretes(dataKey, openOverlay));
 window.__milaAbrirLembretes = () => abrirLembretes(null, openOverlay);
+
+// Ponte: agenda.js chama openAgForm / openFeriasForm via callback (sem import circular)
+setOpenAgFormFn((agId) => openAgForm(agId));
+window.__milaOpenAgForm = (agId) => openAgForm(agId);
+setOpenFeriasFormFn((feriasId) => openFeriasForm(feriasId, openOverlay));
+window.__milaOpenFeriasForm = (feriasId) => openFeriasForm(feriasId, openOverlay);
 
 const temaToggleEl = document.getElementById("temaToggle");
 if(temaToggleEl){
