@@ -7,6 +7,7 @@
 import { uid, escapeHtml, formatDateBR } from "./helpers.js";
 import { saveFerias } from "./storage.js";
 import { state } from "./state.js";
+import { marcarMudanca } from "./backup-nuvem.js";
 
 /* =========================================================
    UI — FORM
@@ -87,6 +88,7 @@ export function salvarFerias(closeOverlay, renderGrid){
   }
 
   saveFerias(state);
+  marcarMudanca();
   closeOverlay("overlayFerias");
   renderGrid();
 }
@@ -97,6 +99,7 @@ export function excluirFerias(closeOverlay, renderGrid){
 
   state.ferias = state.ferias.filter(x => x.id !== state.editingFeriasId);
   saveFerias(state);
+  marcarMudanca();
   closeOverlay("overlayFerias");
   renderGrid();
 }
