@@ -249,11 +249,13 @@ let agDomicilioAtivoLocal = false;
 ligarAutocomplete(inputAgCliente, inputAgTelefone, agEndereco,
   buscarClientesPorNome,
   (c) => {
-    inputAgCliente.value = c.nome;
-    if(!inputAgTelefone.value.trim() && c.telefone) inputAgTelefone.value = c.telefone;
-    if(agDomicilioAtivoLocal && agEndereco && !agEndereco.value.trim() && c.endereco){
-      agEndereco.value = c.endereco;
-      btnAbrirMaps.disabled = false;
+    // Sempre atualiza nome + telefone do contato escolhido (trocar de cliente não deixa tel antigo)
+    inputAgCliente.value = c.nome || "";
+    inputAgTelefone.value = c.telefone || "";
+    if(agDomicilioAtivoLocal && agEndereco){
+      // Endereço do cadastro; se o contato não tiver, limpa para não misturar com outro cliente
+      agEndereco.value = c.endereco || "";
+      btnAbrirMaps.disabled = !(agEndereco.value || "").trim();
     }
     atualizarHorarioCliente2Form();
   });
@@ -261,8 +263,8 @@ ligarAutocomplete(inputAgCliente, inputAgTelefone, agEndereco,
 ligarAutocomplete(inputAgCliente2, inputAgTelefone2, null,
   buscarClientesPorNome,
   (c) => {
-    inputAgCliente2.value = c.nome;
-    if(!inputAgTelefone2.value.trim() && c.telefone) inputAgTelefone2.value = c.telefone;
+    inputAgCliente2.value = c.nome || "";
+    inputAgTelefone2.value = c.telefone || "";
   });
 
 function toggleCliente2(){
