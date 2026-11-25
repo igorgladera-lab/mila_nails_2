@@ -278,8 +278,14 @@ export function popularHorarios(valorAtual, idAtual){
   if(!sel) return;
   sel.innerHTML = '<option value="">— Sem horário —</option>';
 
+  // Após fragmentação: a data do dia fica em state / window (não no _currentDayKeyLocal)
+  const dayKey = (typeof state !== "undefined" && state.currentDayKey)
+    || (typeof window !== "undefined" && window.__milaCurrentDayKey)
+    || currentDayKeyLocal()
+    || null;
+
   const ocupados = {};
-  const ags = state.agenda[currentDayKeyLocal()] || [];
+  const ags = (dayKey && state.agenda[dayKey]) ? state.agenda[dayKey] : [];
   ags.forEach(ag => {
     if(!ag.hora) return;
     if(idAtual && ag.id === idAtual) return;
