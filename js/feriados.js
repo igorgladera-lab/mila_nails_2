@@ -10,13 +10,16 @@ import { saveFeriadosCustom } from "./storage.js";
 import { state } from "./state.js";
 import { marcarMudanca } from "./backup-nuvem.js";
 
+let _openOverlayFn = null;
+
 /* =========================================================
    UI — LISTA
    ========================================================= */
 export function openFeriados(openOverlay){
+  if(typeof openOverlay === "function") _openOverlayFn = openOverlay;
   renderFeriadosNacionais();
   renderFeriadosCustom();
-  openOverlay("overlayFeriados");
+  (_openOverlayFn || openOverlay)("overlayFeriados");
 }
 
 export function renderFeriadosNacionais(){
@@ -49,7 +52,7 @@ export function renderFeriadosCustom(){
         '<div class="feriado-meta">' + escapeHtml(meta) + '</div>' +
       '</div>';
 
-    el.addEventListener("click", () => openFeriadoForm(f.id));
+    el.addEventListener("click", () => openFeriadoForm(f.id, _openOverlayFn));
     body.appendChild(el);
   });
 }
@@ -58,6 +61,13 @@ export function renderFeriadosCustom(){
    UI — FORM
    ========================================================= */
 export function openFeriadoForm(feriadoId, openOverlay){
+  if(typeof openOverlay === "function") _openOverlayFn = openOverlay;
+  const open = openOverlay || _openOverlayFn;
+  if(typeof open !== "function"){
+    console.error("openFeriadoForm: openOverlay não registrado");
+    return;
+  }
+
   state.editingFeriadoId = feriadoId || null;
   const isEdit = !!feriadoId;
 
@@ -79,7 +89,7 @@ export function openFeriadoForm(feriadoId, openOverlay){
     document.getElementById("feriadoAnual").checked = false;
   }
 
-  openOverlay("overlayFeriado");
+  open("overlayFeriado");
 }
 
 export function salvarFeriado(closeOverlay, renderGrid){

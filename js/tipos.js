@@ -10,12 +10,15 @@ import { saveTipos } from "./storage.js";
 import { state } from "./state.js";
 import { marcarMudanca } from "./backup-nuvem.js";
 
+let _openOverlayFn = null;
+
 /* =========================================================
    UI — LISTA
    ========================================================= */
 export function openTipos(openOverlay){
+  if(typeof openOverlay === "function") _openOverlayFn = openOverlay;
   renderTiposList();
-  openOverlay("overlayTipos");
+  (_openOverlayFn || openOverlay)("overlayTipos");
 }
 
 export function renderTiposList(){
@@ -43,7 +46,7 @@ export function renderTiposList(){
         (meta.length ? '<div class="tipo-meta">' + escapeHtml(meta.join(" · ")) + '</div>' : '') +
       '</div>';
 
-    el.addEventListener("click", () => openTipoForm(t.id));
+    el.addEventListener("click", () => openTipoForm(t.id, _openOverlayFn));
     body.appendChild(el);
   });
 }
@@ -87,6 +90,13 @@ export function renderColorGrid(){
    UI — FORM
    ========================================================= */
 export function openTipoForm(tipoId, openOverlay){
+  if(typeof openOverlay === "function") _openOverlayFn = openOverlay;
+  const open = openOverlay || _openOverlayFn;
+  if(typeof open !== "function"){
+    console.error("openTipoForm: openOverlay não registrado");
+    return;
+  }
+
   state.editingTipoId = tipoId || null;
   const isEdit = !!tipoId;
 
@@ -109,7 +119,7 @@ export function openTipoForm(tipoId, openOverlay){
   }
 
   renderColorGrid();
-  openOverlay("overlayTipo");
+  open("overlayTipo");
 }
 
 export function salvarTipo(closeOverlay, renderGrid){

@@ -10,6 +10,9 @@ import { saveClientes } from "./storage.js";
 import { state } from "./state.js";
 import { marcarMudanca } from "./backup-nuvem.js";
 
+/* Ponte de overlay (evita openClienteForm sem openOverlay no clique da lista) */
+let _openOverlayFn = null;
+
 /* =========================================================
    HELPERS
    ========================================================= */
@@ -107,10 +110,11 @@ export function oferecerAtualizarEnderecoCliente(nomeCliente, enderecoAgendament
    UI — LISTA
    ========================================================= */
 export function openClientes(openOverlay){
+  if(typeof openOverlay === "function") _openOverlayFn = openOverlay;
   document.getElementById("buscaListaClientes").value = "";
   document.getElementById("btnLimparBuscaClientes").classList.remove("show");
   renderClientesList("");
-  openOverlay("overlayClientes");
+  (_openOverlayFn || openOverlay)("overlayClientes");
 }
 
 export function renderClientesList(filtro){
@@ -147,7 +151,7 @@ export function renderClientesList(filtro){
         '<div class="cli-end' + endCls + '">📍 ' + endTxt + '</div>' +
       '</div>';
 
-    el.addEventListener("click", () => openClienteForm(c.id));
+    el.addEventListener("click", () => openClienteForm(c.id, _openOverlayFn));
     body.appendChild(el);
   });
 }
@@ -156,6 +160,13 @@ export function renderClientesList(filtro){
    UI — FORM
    ========================================================= */
 export function openClienteForm(clienteId, openOverlay){
+  if(typeof openOverlay === "function") _openOverlayFn = openOverlay;
+  const open = openOverlay || _openOverlayFn;
+  if(typeof open !== "function"){
+    console.error("openClienteForm: openOverlay não registrado");
+    return;
+  }
+
   state.editingClienteId = clienteId || null;
   const isEdit = !!clienteId;
 
@@ -175,7 +186,7 @@ export function openClienteForm(clienteId, openOverlay){
     document.getElementById("clienteEndereco").value = "";
   }
 
-  openOverlay("overlayCliente");
+  open("overlayCliente");
   setTimeout(() => {
     try{ document.getElementById("clienteNome").focus({preventScroll:true}); }catch(e){}
   }, 100);
